@@ -9,6 +9,7 @@ if (parseInt(process.argv[2]) >= 10) {
 require("dotenv-flow").config();
 
 // Libs
+const glob = require("glob");
 const async = require("async");
 const execa = require("execa");
 const got = require("got");
@@ -33,9 +34,7 @@ const TMP_PATH = "./tmp/"; // NOTE: Include trailing slash
   );
   await retrieveTsParts(VOD_ID, partsToGet, TMP_PATH);
 
-  console.log(
-    `✅ Finished download of ${partsToGet.length} VOD TS parts to ./tmp`
-  );
+  console.log(`✅ Finished download of ${partsToGet.length} VOD TS parts to ./tmp`);
 
   // Build a "manifest" file to be used by FFMPEG when
   // concatenating TS parts together
@@ -52,9 +51,7 @@ const TMP_PATH = "./tmp/"; // NOTE: Include trailing slash
     try {
       console.log("Unmuting first TS part");
 
-      let partPath = `${TMP_PATH}${vodConcatManifest[0]
-        .replace("file ", "")
-        .replace(/'/g, "")}`;
+      let partPath = `${TMP_PATH}${vodConcatManifest[0].replace("file ", "").replace(/'/g, "")}`;
       await execa("ffmpeg", [
         "-f",
         "lavfi",
@@ -82,10 +79,7 @@ const TMP_PATH = "./tmp/"; // NOTE: Include trailing slash
         "-y",
         `${partPath.replace("-muted", "-unmuted-flipped")}`
       ]);
-      vodConcatManifest[0] = vodConcatManifest[0].replace(
-        "-muted",
-        "-unmuted-flipped"
-      );
+      vodConcatManifest[0] = vodConcatManifest[0].replace("-muted", "-unmuted-flipped");
       console.log("First TS part unmuted");
     } catch (error) {
       console.log(error);
@@ -93,14 +87,11 @@ const TMP_PATH = "./tmp/"; // NOTE: Include trailing slash
   }
 
   // Write concat manifest to file
-  fs.writeFileSync(
-    `${TMP_PATH}${VOD_ID}-concat-manifest.txt`,
-    vodConcatManifest.join("\n")
-  );
-  console.log(`🖹 FFMPEG concat manifest prepared`);
+  fs.writeFileSync(`${TMP_PATH}${VOD_ID}-concat-manifest.txt`, vodConcatManifest.join("\n"));
+  console.log(`📄 FFMPEG concat manifest prepared`);
 
   // Concat parts using FFMPEG
-  console.log(`🔬 Assembling TS parts`);
+  console.log(`🛠 Assembling TS parts`);
   try {
     await execa("ffmpeg", [
       "-f",
@@ -112,10 +103,18 @@ const TMP_PATH = "./tmp/"; // NOTE: Include trailing slash
       "-y",
       `${TMP_PATH}${VOD_ID}.mp4`
     ]);
-    console.log(`🏗 TS parts assembled into ${TMP_PATH}${VOD_ID}.mp4`);
+    console.log(`📦 TS parts assembled into ${TMP_PATH}${VOD_ID}.mp4`);
   } catch (error) {
     console.log(error);
   }
+
+  // Cleanup
+  glob(`${TMP_PATH}*+(.ts|concat-manifest.txt)`, (err, files) => {
+    files.forEach(file => {
+      if (!file) return;
+      fs.unlinkSync(file);
+    });
+  });
 })();
 
 async function retrieveTsParts(vodId, vodTsUrls, tmpPath) {
@@ -129,7 +128,7 @@ async function retrieveTsParts(vodId, vodTsUrls, tmpPath) {
         try {
           got.stream(vodUrl).pipe(
             fs.createWriteStream(filePath).on("close", () => {
-              console.log(`👉 Done downloading TS part #${index + 1}`);
+              console.log(`👌 Done downloading TS part no. ${index + 1}`);
               callback();
             })
           );
@@ -155,15 +154,13 @@ async function retrieveTsParts(vodId, vodTsUrls, tmpPath) {
 async function getVodToken(vodId) {
   // TOKEN_PATTERN
   // "https://api.twitch.tv/api/vods/{vod_id}/access_token"
-  let query = new URLSearchParams([
-    ["client_id", process.env.TWITCH_CLIENT_ID]
-  ]);
+  let query = new URLSearchParams([["client_id", process.env.TWITCH_CLIENT_ID]]);
 
   try {
-    let res = await got(
-      `https://api.twitch.tv/api/vods/${vodId}/access_token`,
-      { query, json: true }
-    );
+    let res = await got(`https://api.twitch.tv/api/vods/${vodId}/access_token`, {
+      query,
+      json: true
+    });
     return res.body;
   } catch (error) {
     console.error("Something went wrong w/ the VOD token retrieval");
@@ -217,9 +214,7 @@ async function _getTsUrlsFromTsIndex(tsMeta) {
   let splitMeta = tsMeta.split("\n");
 
   // Find location of main video descriptor
-  let videoProgramIndex = splitMeta.findIndex(
-    item => item.indexOf('VIDEO="chunked"') !== -1
-  );
+  let videoProgramIndex = splitMeta.findIndex(item => item.indexOf('VIDEO="chunked"') !== -1);
 
   // Grab meta URL from just below the descriptor line
   let videoProgramMetaUrl = splitMeta[videoProgramIndex + 1];
