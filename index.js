@@ -28,13 +28,15 @@ const TMP_PATH = "./tmp/"; // NOTE: Include trailing slash
   // Grab ten TS parts
   // let partsToGet = VOD_TS_URLS.slice(32, 45);
   console.log(
-    `🏎 Beginning download of ${
+    `🏎 Beginning download of VOD ID ${VOD_ID} with ${
       partsToGet.length
-    } VOD TS parts, ${NUM_TO_DOWNLOAD_PARALLEL} at a time, to ./tmp`
+    } TS parts, ${NUM_TO_DOWNLOAD_PARALLEL} at a time, to ./tmp`
   );
   await retrieveTsParts(VOD_ID, partsToGet, TMP_PATH);
 
-  console.log(`✅ Finished download of ${partsToGet.length} VOD TS parts to ./tmp`);
+  console.log(
+    `✅ Finished download of VOD ID ${VOD_ID} w/ ${partsToGet.length} VOD TS parts to ./tmp`
+  );
 
   // Build a "manifest" file to be used by FFMPEG when
   // concatenating TS parts together
@@ -49,7 +51,7 @@ const TMP_PATH = "./tmp/"; // NOTE: Include trailing slash
   // TODO: Burn it with fire
   if (vodConcatManifest[0].indexOf("-muted") != -1) {
     try {
-      console.log("Unmuting first TS part");
+      console.log(`Unmuting first TS part of ${VOD_ID}`);
 
       let partPath = `${TMP_PATH}${vodConcatManifest[0].replace("file ", "").replace(/'/g, "")}`;
       await execa("ffmpeg", [
@@ -80,7 +82,7 @@ const TMP_PATH = "./tmp/"; // NOTE: Include trailing slash
         `${partPath.replace("-muted", "-unmuted-flipped")}`
       ]);
       vodConcatManifest[0] = vodConcatManifest[0].replace("-muted", "-unmuted-flipped");
-      console.log("First TS part unmuted");
+      console.log(`First TS part of VOD ID ${VOD_ID} unmuted`);
     } catch (error) {
       console.log(error);
     }
@@ -103,13 +105,13 @@ const TMP_PATH = "./tmp/"; // NOTE: Include trailing slash
       "-y",
       `${TMP_PATH}${VOD_ID}.mp4`
     ]);
-    console.log(`📦 TS parts assembled into ${TMP_PATH}${VOD_ID}.mp4`);
+    console.log(`📦 TS parts assembled into ${TMP_PATH}${VOD_ID}.mp4 for VOD ID ${VOD_ID}`);
   } catch (error) {
     console.log(error);
   }
 
   // Cleanup
-  glob(`${TMP_PATH}*+(.ts|concat-manifest.txt)`, (err, files) => {
+  glob(`${TMP_PATH}${VOD_ID}-*`, (err, files) => {
     files.forEach(file => {
       if (!file) return;
       fs.unlinkSync(file);
@@ -128,7 +130,7 @@ async function retrieveTsParts(vodId, vodTsUrls, tmpPath) {
         try {
           got.stream(vodUrl).pipe(
             fs.createWriteStream(filePath).on("close", () => {
-              console.log(`👌 Done downloading TS part no. ${index + 1}`);
+              console.log(`👌 Done downloading TS part no. ${index + 1} of VOD ID ${VOD_ID}`);
               callback();
             })
           );
