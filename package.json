@@ -5,5 +5,8 @@
     "execa": "^2.0.3",
     "glob": "^7.1.4",
     "got": "^9.6.0"
+  },
+  "scripts": {
+    "download-one": "node index.js"
   }
 }
